@@ -1,12 +1,12 @@
 package server;
 
-import static client.Client.ACTION_GET;
-import static client.Client.ACTION_SEND;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+
 import service.Functions;
+import service.Functions.Action;
 import service.ReceiveThread;
 import service.SendThread;
 import service.TCPPackage;
@@ -28,7 +28,7 @@ public class Server {
             String[] informations = information.split("/");
             String filename = informations[0];
             int packageTotal = Integer.parseInt(informations[1]);
-            if (clientAction.getAction() == ACTION_GET){
+            if (!clientAction.getAction()){
                 packageTotal = (int) Functions.getPackageTotal("./folder/" + filename);
             }
             DatagramSocket datagramSocket = Functions.getFreePort();
@@ -41,17 +41,15 @@ public class Server {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            if (clientAction.getAction() == ACTION_SEND){
+            if (clientAction.getAction()){
                 System.out.println("Get file " + filename + " at local port: " + datagramSocket.getLocalPort() + " from " + ip);
-                ReceiveThread myThread = new ReceiveThread(datagramSocket, ip, port, filename, packageTotal);
-                Thread thread = new Thread(myThread);
-                thread.start();
+                ReceiveThread receiveThread = new ReceiveThread(datagramSocket, ip, port, filename, packageTotal);
+                (new Thread(receiveThread)).start();
             }
             else {
                 System.out.println("Send file " + filename + " at local port: " + datagramSocket.getLocalPort() + " to " + ip);
-                SendThread myThread = new SendThread(datagramSocket, port, ip, filename);
-                Thread thread = new Thread(myThread);
-                thread.start();
+                SendThread sendThread = new SendThread(datagramSocket, port, ip, filename);
+                (new Thread(sendThread)).start();
             }
         }
     }

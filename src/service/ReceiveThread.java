@@ -104,9 +104,8 @@ public class ReceiveThread implements Runnable {
     }
 
     private TCPPackage receivePackage() throws IOException {
-        byte[] buf = new byte[1400];
-        DatagramPacket datagramPacket = new DatagramPacket(buf, buf.length);
-        datagramSocket.receive(datagramPacket);
-        return Functions.byteToPackage(buf);
+        byte[] buffer = new byte[1400];
+        datagramSocket.receive(new DatagramPacket(buffer, buffer.length));
+        return Functions.byteToPackage(buffer);
     }
 }

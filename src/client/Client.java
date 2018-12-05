@@ -8,25 +8,24 @@ import service.Functions;
 import service.ReceiveThread;
 import service.SendThread;
 import service.TCPPackage;
+import service.Functions.Action;
 
 public class Client {
 
-    public static final boolean ACTION_SEND  = true;
-    public static final boolean ACTION_GET  = false;
     private static InetAddress ip;
     private static DatagramSocket datagramSocket;
 
     public Client(String[] args) throws IOException {
-        boolean action = false;
+        Action action = null;
         String information = "";
         if (args.length != 3) {
         	Functions.printError("Wrong number of arguments.");
         }
         if (args[0].equals("lsend")) {
-            action = ACTION_SEND;
+            action = Action.lsend;
         }
         else if (args[0].equals("lget")) {
-            action = ACTION_GET;
+            action = Action.lget;
         }
         else {
         	Functions.printError("Unrecognized operation.");
@@ -38,14 +37,14 @@ public class Client {
         }
         int packageTotal = 0;
         String filename = args[2];
-        if (action == ACTION_SEND) {
+        if (action == Action.lsend) {
             packageTotal = (int) Functions.getPackageTotal("./folder/" + filename);
         }
         information = filename + "/" + packageTotal;
         datagramSocket = Functions.getFreePort();
-        TCPPackage data = new TCPPackage(0, false, 0, action, information.getBytes());
+        TCPPackage data = new TCPPackage(0, false, 0, action == Action.lsend, information.getBytes());
         sendPackage(data, ip, 9090);
-        if (action == ACTION_SEND){
+        if (action == Action.lget){
             System.out.println("Send file " + filename + " at local port: " + datagramSocket.getLocalPort() + " to " + ip);
             TCPPackage receivePackage = receivePackage();
             String portAndPackageTotal = new String(receivePackage.getData());
@@ -56,7 +55,7 @@ public class Client {
             Thread thread = new Thread(sendThread);
             thread.start();
         }
-        else if (action == ACTION_GET) {
+        else if (action == Action.lget) {
             System.out.println("Get file " + filename + " at local port: " + datagramSocket.getLocalPort() + " from " + ip);
             TCPPackage receivePackage = receivePackage();
             String portAndPackageTotal = new String(receivePackage.getData());

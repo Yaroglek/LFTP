@@ -7,9 +7,10 @@ import java.util.List;
 
 public class Functions {
 
-    static final int MAX_BYTE = 1024;
+	public enum Action {lsend, lget};
+    private static final int MAX_BYTE = 1024;
     private final static int BLOCK_SIZE = 1024 * 1024 * 10;
-    final static int BLOCK_PACKAGE_NUM = BLOCK_SIZE / MAX_BYTE;
+    public final static int BLOCK_PACKAGE_NUM = BLOCK_SIZE / MAX_BYTE;
 
     public static void printError(String error){
     	System.out.println(" - Error: " + error);
@@ -67,11 +68,11 @@ public class Functions {
         return (int)Math.floor(BytesTotal / MAX_BYTE) + 1;
     }
 
-    public static List<byte[]> getByteList(int blockNum, String path,int packageTotal,long bytesTotal){
+    public static List<byte[]> getByteList(int blockNum, String path, int packageTotal, long bytesTotal){
         List<byte[]> ByteList = new ArrayList<>();
         try {
             FileInputStream inStream = new FileInputStream(new File(path));
-            for(int i = 0; i < blockNum; i++){
+            for (int i = 0; i < blockNum; i++){
                 inStream.skip(BLOCK_SIZE);
             }
             if ((blockNum + 1) * BLOCK_PACKAGE_NUM >  packageTotal) {
@@ -92,6 +93,7 @@ public class Functions {
                     ByteList.add(data);
                 }
             }
+            inStream.close();
         }
         catch (Exception e) {
             e.printStackTrace();
@@ -100,19 +102,19 @@ public class Functions {
     }
     
     public static TCPPackage byteToPackage(byte[] bytes) {
-        TCPPackage obj = null;
+        TCPPackage tcpPackage = null;
         try {
-            ByteArrayInputStream bi = new ByteArrayInputStream(bytes);
-            ObjectInputStream oi = new ObjectInputStream(bi);
-            obj = (TCPPackage)oi.readObject();
-            bi.close();
-            oi.close();
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+            ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+            tcpPackage = (TCPPackage) objectInputStream.readObject();
+            byteArrayInputStream.close();
+            objectInputStream.close();
         }
         catch (Exception e) {
             System.out.println("translation" + e.getMessage());
             e.printStackTrace();
         }
-        return obj;
+        return tcpPackage;
     }
 
     public static byte[] packageToByte(TCPPackage obj) {
@@ -146,7 +148,7 @@ public class Functions {
             try {
                 socket = new DatagramSocket(i);
             } catch (IOException ex) {
-                continue; // try next port
+                continue;
             }
             break;
         }

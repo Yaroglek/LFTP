@@ -1,14 +1,13 @@
 package service;
 
+import static service.Functions.BLOCK_PACKAGE_NUM;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
-
-import static client.Client.ACTION_SEND;
-import static service.Functions.BLOCK_PACKAGE_NUM;
 
 public class SendThread implements Runnable{
 
@@ -36,7 +35,7 @@ public class SendThread implements Runnable{
     private long bytesTotal;
     private volatile int blockCur = 0;
 
-    private volatile List<TCPPackage> datas = new ArrayList<>();
+    private volatile List<TCPPackage> tcpPackageList = new ArrayList<>();
 
     private DatagramSocket datagramSocket;
     private String file;
@@ -46,7 +45,7 @@ public class SendThread implements Runnable{
     public SendThread(DatagramSocket datagramSocket, int desPort, InetAddress ip, String file){
         this.datagramSocket = datagramSocket;
         this.desPort = desPort;
-        this.ip =  ip;
+        this.ip = ip;
         this.file = file;
     }
 
@@ -55,28 +54,25 @@ public class SendThread implements Runnable{
         String path = "./folder/" + file;
         packageTotal = Functions.getPackageTotal(path);
         bytesTotal = Functions.getByteTotal(path);
-
-        Thread rThread = new Thread(new ReceiveACKThread());
-        rThread.start();
-
-        Thread tThread = new Thread(new TimeOut());
-        tThread.start();
-
+        Thread receiveACKThread = new Thread(new ReceiveACKThread());
+        receiveACKThread.start();
+        Thread timeOutThread = new Thread(new TimeOut());
+        timeOutThread.start();
         startTime = System.currentTimeMillis();
         for (blockCur = 0; blockCur < Math.floor(packageTotal / (float) BLOCK_PACKAGE_NUM) + 1; blockCur++){
             List<byte[]> byteList = Functions.getByteList(blockCur, path, packageTotal, bytesTotal);
-            datas.clear();
+            tcpPackageList.clear();
             for(int j = 0; j < byteList.size(); j++) {
-                datas.add(new TCPPackage(0, false, blockCur * BLOCK_PACKAGE_NUM + j, true, byteList.get(j)));
+                tcpPackageList.add(new TCPPackage(0, false, blockCur * BLOCK_PACKAGE_NUM + j, true, byteList.get(j)));
             }
-            while (nextseqnum < datas.size() + blockCur * BLOCK_PACKAGE_NUM) {
+            while (nextseqnum < tcpPackageList.size() + blockCur * BLOCK_PACKAGE_NUM) {
                 if (ReSend == false && nextseqnum < base + cwnd) {
                     TCPPackage tcpPackage;
                     if (rwnd <= 0){
-                        tcpPackage = new TCPPackage(0, false, -1, ACTION_SEND, null);
+                        tcpPackage = new TCPPackage(0, false, -1, true, null);
                     }
                     else {
-                        tcpPackage = datas.get(nextseqnum % BLOCK_PACKAGE_NUM);
+                        tcpPackage = tcpPackageList.get(nextseqnum % BLOCK_PACKAGE_NUM);
                     }
                     byte[] bytes = Functions.packageToByte(tcpPackage);
                     DatagramPacket packet = new DatagramPacket(bytes, bytes.length, ip , desPort);
@@ -91,11 +87,11 @@ public class SendThread implements Runnable{
                     nextseqnum++;
                 }
             }
-            while (lastACK < datas.size() - 1 + blockCur * BLOCK_PACKAGE_NUM) {}
+            while (lastACK < tcpPackageList.size() - 1 + blockCur * BLOCK_PACKAGE_NUM);
         }
         System.out.println("Success.");
         while (base < packageTotal);
-        TCPPackage tcpPackage = new TCPPackage(0, true, nextseqnum, ACTION_SEND, null);
+        TCPPackage tcpPackage = new TCPPackage(0, true, nextseqnum, true, null);
         byte[] bytes = Functions.packageToByte(tcpPackage);
         DatagramPacket packet = new DatagramPacket(bytes, bytes.length, ip , desPort);
         try {
@@ -170,7 +166,7 @@ public class SendThread implements Runnable{
                     int start = base;
                     int end = nextseqnum;
                     for (int i = start; i < end; i++){
-                        TCPPackage tcpPackage = datas.get(i % BLOCK_PACKAGE_NUM);
+                        TCPPackage tcpPackage = tcpPackageList.get(i % BLOCK_PACKAGE_NUM);
                         byte[] bytes = Functions.packageToByte(tcpPackage);
                         DatagramPacket packet = new DatagramPacket(bytes, bytes.length, ip , desPort);
                         try {
